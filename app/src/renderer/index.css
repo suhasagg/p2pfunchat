@@ -1,0 +1,248 @@
+html, body, #root {
+    margin: 0;
+
+    width: 100%;
+    height: 100%;
+
+    font-family: sans-serif;
+    font-size: 14px;
+    background-color: #282a36;
+
+    overflow: auto;
+
+    color: #f8f8f2;
+}
+
+:focus {
+    outline: none;
+}
+
+input[type="text"], input[type="textarea"], textarea {
+    background-color: #44475a;
+    color: #f8f8f2;
+    border: none;
+    resize: none;
+}
+
+button, button[type="submit"], input[type="button"], input[type="submit"] {
+    background-color: #bd93f9;
+    font-weight: bold;
+    color: #f8f8f2;
+    border: none;
+
+    padding: 4px;
+}
+
+.connecting-screen {
+    display: flex;
+    flex-flow: column wrap;
+    align-items: center;
+    justify-content: center;
+
+    width: 100%;
+    height: 100%;
+}
+
+.connecting-label {
+}
+
+.connecting-feedback-bar {
+    margin-top: 8px;
+    width: 100px;
+    height: 3px;
+    border: 1px solid #44475a;
+
+    overflow: hidden;
+}
+
+.connecting-feedback-bar-thumb {
+    position: relative;
+    left: 10px;
+
+    height: 100%;
+    width: 20%;
+    background-color: #bd93f9;
+}
+
+.chat {
+    display: flex;
+    flex-flow: row nowrap;
+    height: 100%;
+}
+
+.chat-room {
+    flex: 1;
+    border-right: 1px solid #44475a;
+    overflow: auto;
+}
+
+.chat-participants {
+    padding: 8px;
+}
+
+.chat-participant {
+    margin-bottom: 8px;
+}
+
+.chat-participants-title {
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 12px;
+}
+
+.chat-panel {
+    display: flex;
+    flex-flow: column nowrap;
+    flex: 4;
+    height: 100%;
+}
+
+.chat-contents {
+    display: flex;
+    flex: 1 1 80%;
+    flex-flow: column nowrap;
+    align-items: flex-start;
+
+    overflow-x: hidden;
+    overflow-y: scroll;
+    overflow-wrap: anywhere;
+
+    padding-top: 8px;
+
+    width: 100%;
+}
+
+.chat-message {
+    display: flex;
+    flex-flow: row wrap;
+
+    margin: 4px 8px;
+    padding: 4px;
+
+    background-color: #44475a;
+    border-radius: 4px;
+}
+
+.chat-message-timestamp {
+    align-self: flex-end;
+
+    display: inline-block;
+    margin-right: 4px;
+    font-size: 12px;
+    color: #717fb3;
+}
+
+.chat-message-sender {
+    display: inline-block;
+    margin-right: 4px;
+    font-weight: bold;
+    color: #ffb86c;
+}
+
+.chat-message-value {
+    display: inline-block;
+    align-self: flex-end;
+}
+
+.chat-notification {
+    display: flex;
+    flex-flow: row wrap;
+
+    margin: 4px 8px;
+    padding: 4px;
+
+    background-color: #44475a;
+    border-radius: 4px;
+}
+
+.chat-send {
+    display: flex;
+    flex: 1 1 40px;
+    align-items: flex-end;
+    flex-flow: row nowrap;
+
+    max-height: 40px;
+}
+
+.chat-send-input {
+    order: 1;
+    flex: 1;
+    font-size: 14px;
+    height: 100%;
+
+    padding: 0 8px !important;
+}
+
+.chat-send-btn {
+    order: 2;
+    font-size: 14px;
+    height: 100%;
+    min-width: 60px;
+}
+
+.room-info {
+    display: flex;
+    flex-direction: column;
+    background-color: #282a36;
+    padding: 8px;
+    overflow-wrap: anywhere;
+
+    border-bottom: 1px solid #44475a;
+}
+
+.room-name {
+    font-size: 14px;
+    margin-right: 16px;
+    margin-bottom: 8px;
+}
+
+.local-node-id {
+    font-size: 14px;
+    color: rgba(248, 248, 242, 0.6);
+}
+
+.connect-form {
+    display: flex;
+    flex-flow: column wrap;
+    align-items: flex-start;
+
+    padding: 8px;
+}
+
+.label {
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.input {
+    font-size: 14px;
+    height: 20px;
+    margin-bottom: 16px;
+}
+
+.connect-node-addrs-input {
+    flex: 1;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.chat-contents::-webkit-scrollbar,
+.chat-participants::-webkit-scrollbar,
+.chat-room::-webkit-scrollbar,
+#root::-webkit-scrollbar,
+input[type="textarea"]::-webkit-scrollbar,
+textarea::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+    background-color: #282a36;
+}
+
+.chat-contents::-webkit-scrollbar-thumb,
+.chat-participants::-webkit-scrollbar-thumb,
+.chat-room::-webkit-scrollbar-thumb,
+#root::-webkit-scrollbar-thumb,
+input[type="textarea"]::-webkit-scrollbar-thumb,
+textarea::-webkit-scrollbar-thumb {
+    background-color: #44475a;
+}
