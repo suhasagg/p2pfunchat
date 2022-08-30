@@ -568,7 +568,30 @@ func (r *ChannelProcessor) roomSubscriptionHandler(room *Channel) {
 			r.logger.Debug("Abusive content score", zap.Float64("Abuse Score", similarityscore))
 			r.logger.Debug("Topic relevance score", zap.Float64("Abuse Score", topicrelevancescore))
 			var moderation bool
-			if similarityscore > 0.5 {
+
+			if topicrelevancescore > 0.4 {
+
+				r.logger.Debug("Quality content detected")
+				msg := message.Message{
+					SenderID:  "Moderator",
+					Timestamp: time.Now(),
+					Value:     chatMessage.SenderID.Pretty() + ":" + "Kool content",
+				}
+
+				err := r.eventPublisher.Publish(&events.NewMessage{
+					Message:  msg,
+					RoomName: room.name,
+				})
+				if err != nil {
+					r.logger.Error("failed publishing room manager event", zap.Error(err))
+					continue
+				}
+
+			} else {
+
+			}
+
+			if similarityscore > 0.3 {
 				moderation = true
 				r.logger.Debug("Abusive content detected")
 			} else {
