@@ -29,7 +29,7 @@ Feature Set -
 
 3)Content Moderation
 
-Negative Categories 
+Negative Categories - These messages are blocked and not reachable to other users.
 
 a) Spam
 
@@ -40,7 +40,7 @@ c) Adult content
 
 Positive Categories 
 
-a)Highly relevant – quality content
+a)Highly relevant – quality content for assigning badges, points to user to earn rewards
 
 b)Less relevant
 
