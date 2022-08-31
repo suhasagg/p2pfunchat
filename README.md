@@ -21,6 +21,9 @@ This is how the network looks  like after a node joins the Kademlia network. We'
 This is how the network looks like after the node requests a chatroom. All the nodes in the chatroom are now connected directly and separately from the Kademlia network.
 
 
+Start content analytics python module based on sentence transformers in start to create ML analytics tracker used by p2p chat.
+
+
 Feature Set - 
 
 1)GRPC based Chat server / client
