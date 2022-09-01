@@ -31,7 +31,7 @@ import (
 const (
 	roomParticipantsTTLPermanent = math.MaxInt64
 	roomParticipantsTTL          = time.Second * 300
-	roomBlockTTL                 = time.Hour * 12
+	roomBlockTTL                 = time.Minute * 1
 	roomBanTTL                   = time.Hour * 168
 )
 
@@ -96,9 +96,12 @@ type Channel struct {
 	subscription *pubsub.Subscription
 	// Map is counter of moderation messages for user in a chat room
 	usermoderationCounter sync.Map
-	ratelimitstore        ratelimit.Store
-	lock                  sync.RWMutex
-	participants          map[peer.ID]*participantsEntry
+	counter               int
+	//moderationdata        map[peer.ID]*moderationData
+	moderationdata sync.Map
+	ratelimitstore ratelimit.Store
+	lock           sync.RWMutex
+	participants   map[peer.ID]*participantsEntry
 }
 
 func setupDB() (*boltdbstorage.Storage, error) {
@@ -116,10 +119,13 @@ func setupDB() (*boltdbstorage.Storage, error) {
 }
 
 func newChannel(name string, topic *pubsub.Topic, subscription *pubsub.Subscription) *Channel {
+	var moderationcounter int
 	return &Channel{
-		name:         name,
-		topic:        topic,
+		name:  name,
+		topic: topic,
+		//moderationdata: make(map[peer.ID]*moderationData),
 		subscription: subscription,
+		counter:      moderationcounter,
 		participants: make(map[peer.ID]*participantsEntry),
 	}
 }
@@ -178,46 +184,26 @@ func (r *Channel) refreshParticipants(onRemove func(peer.ID)) {
 	}
 }
 
-func (r *Channel) unblockunbanParticipants(onRemoveModeration func(peer.ID)) {
+func (r *Channel) unblockunbanParticipants() {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	r.usermoderationCounter.Range(func(k, v interface{}) bool {
+	r.moderationdata.Range(func(k, v interface{}) bool {
 		if v.(moderationData).blocked {
 			if time.Now().Sub(v.(moderationData).blockedAt) <= roomBlockTTL {
 				return true
 			} else {
-				nickname, found := r.getNickname(k.(peer.ID))
-				if found {
-					r.participants[k.(peer.ID)] = &participantsEntry{
-						ID:       k.(peer.ID),
-						Nickname: nickname,
-						ttl:      roomParticipantsTTL,
-						addedAt:  time.Now(),
-					}
-				}
+				r.moderationdata.Store(k.(peer.ID), moderationData{blocked: false})
+				return true
 			}
-			//logger.Debug("Block Moderation removed")
-			onRemoveModeration(k.(peer.ID))
-			return true
 		}
 		if v.(moderationData).banned {
 			if time.Now().Sub(v.(moderationData).bannedAt) <= roomBanTTL {
 				return true
 			} else {
-				nickname, found := r.getNickname(k.(peer.ID))
-				if found {
-					r.participants[k.(peer.ID)] = &participantsEntry{
-						ID:       k.(peer.ID),
-						Nickname: nickname,
-						ttl:      roomParticipantsTTL,
-						addedAt:  time.Now(),
-					}
-				}
+				r.moderationdata.Store(k.(peer.ID), moderationData{banned: false})
+				return true
 			}
-			//logger.Debug("Ban Moderation removed")
-			onRemoveModeration(k.(peer.ID))
-			return true
 		}
 		return true
 	})
@@ -283,6 +269,7 @@ func NewChannelProcessor(logger *zap.Logger, node Node, kadDHT *dht.IpfsDHT, ps 
 		}
 	}()
 	time.Sleep(time.Second * 2)
+
 	mngr := &ChannelProcessor{
 		logger:         logger,
 		ps:             ps,
@@ -295,7 +282,7 @@ func NewChannelProcessor(logger *zap.Logger, node Node, kadDHT *dht.IpfsDHT, ps 
 	}
 	go mngr.advertise()
 	go mngr.refreshRoomsParticipants()
-
+	go mngr.unblockunbanRoomsParticipants()
 	return mngr, evtSub
 }
 
@@ -512,6 +499,28 @@ func (r *ChannelProcessor) roomSubscriptionHandler(room *Channel) {
 
 			}
 			/*
+				if room.moderationdata[chatMessage.SenderID] != nil {
+
+					if room.moderationdata[chatMessage.SenderID].blocked == true {
+						continue
+					}
+
+					if room.moderationdata[chatMessage.SenderID].banned == true {
+						continue
+					}
+				}
+			*/
+			moderationvalue, found := room.moderationdata.Load(chatMessage.SenderID)
+			if found {
+				if moderationvalue.(moderationData).blocked == true {
+					continue
+				}
+				if moderationvalue.(moderationData).banned == true {
+					continue
+				}
+			}
+
+			/*
 				re := regexp.MustCompile(`(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}`)
 				fmt.Printf("Pattern: %v\n", re.String())
 				submatchall := re.FindAllString(, -1)
@@ -629,28 +638,27 @@ func (r *ChannelProcessor) roomSubscriptionHandler(room *Channel) {
 			}
 
 			if moderation {
-				room.usermoderationCounter = sync.Map{}
+
 				blockdata, found := room.usermoderationCounter.Load(chatMessage.SenderID)
-				var moderationcounter int
+
 				wg := sync.WaitGroup{}
 				wg.Add(1)
 				go func(found bool) {
 					defer wg.Done()
 					if found {
-
-						room.usermoderationCounter.Store(chatMessage.SenderID, moderationcounter+1)
-						moderationcounter = blockdata.(moderationData).counter + 1
+						room.usermoderationCounter.Store(chatMessage.SenderID, room.counter+1)
+						room.counter = blockdata.(int) + 1
 					} else {
 						room.usermoderationCounter.Store(chatMessage.SenderID, 1)
-						moderationcounter = 1
+						room.counter = 1
 					}
 				}(found)
 
 				wg.Wait()
 
-				r.logger.Debug("Moderation Counter", zap.Int("Moderation", moderationcounter))
+				r.logger.Debug("Moderation Counter", zap.Int("Moderation", room.counter))
 
-				if moderationcounter < 5 {
+				if room.counter < 5 {
 
 					msg := message.Message{
 						SenderID:  "Moderator",
@@ -667,8 +675,9 @@ func (r *ChannelProcessor) roomSubscriptionHandler(room *Channel) {
 						continue
 					}
 
-				} else if moderationcounter > 5 && moderationcounter < 10 {
+				} else if room.counter >= 5 && room.counter < 10 {
 
+					room.moderationdata.Store(chatMessage.SenderID, moderationData{blockedAt: time.Now(), blocked: true})
 					msg := message.Message{
 						SenderID:  "Moderator",
 						Timestamp: time.Now(),
@@ -686,6 +695,8 @@ func (r *ChannelProcessor) roomSubscriptionHandler(room *Channel) {
 					}
 
 				} else {
+
+					room.moderationdata.Store(chatMessage.SenderID, moderationData{bannedAt: time.Now(), banned: true})
 
 					msg := message.Message{
 						SenderID:  "Moderator",
@@ -872,21 +883,9 @@ func (r *ChannelProcessor) unblockunbanRoomsParticipants() {
 			defer r.lock.RUnlock()
 
 			for _, room := range r.rooms {
-				room.unblockunbanParticipants(func(peerID peer.ID) {
-					// consider that if we haven't hear of this peer for a while, it disconnected from the room
-					/*
-							err := r.eventPublisher.Publish(&events.ModerationRemoved{
-								PeerID:   peerID,
-								RoomName: room.name,
-							})
-							if err != nil {
-								r.logger.Error("failed publishing room manager event", zap.Error(err))
-						    }
-
-					*/
-
-				})
+				room.unblockunbanParticipants()
 			}
 		}()
+
 	}
 }
