@@ -61,6 +61,9 @@ c)Fun messages
 
 9)User Message history and P2P chat session storage and recovery/resumption in peers. 
   Batch mode message history sync to p2p chat database tracker for analytics and storage.
+  Hbase based message database tracker server - 
+  https://github.com/suhasagg/hbase-messageserver-as-p2pchat-database-tracker
+  
 
 10)Storing User semantics for P2P CHAT sessions to be plugged in analytics engine
    User chat semantics are available in bolt db so that other apps can utilise it for personalisation.
