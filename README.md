@@ -28,7 +28,8 @@ Start content analytics python module based on sentence transformers in start to
 
 
 
-           ![Personalised p2p CHat](https://user-images.githubusercontent.com/3880512/188261357-2f661d6f-cfe6-47e3-8513-059f5cd543cc.gif)
+         
+![Personalised p2p CHat](https://user-images.githubusercontent.com/3880512/188261380-4ff70abf-7831-4a68-a2a3-d2279203de8b.gif)
 
 
 
