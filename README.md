@@ -24,6 +24,11 @@ This is how the network looks like after the node requests a chatroom. All the n
 Start content analytics python module based on sentence transformers in start to create ML analytics tracker used by p2p chat.
 
 
+
+
+
+![Personalised p2p CHat](https://user-images.githubusercontent.com/3880512/188261277-63d24c23-cef9-43e0-a568-4eaa731210ea.gif)
+
 Feature Set - 
 
 1)GRPC based Chat server / client
