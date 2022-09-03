@@ -28,9 +28,14 @@ Start content analytics python module based on sentence transformers in start to
 
 
 
-            ![Personalised p2p CHat](https://user-images.githubusercontent.com/3880512/188261310-864f20a8-e1d9-40f0-bc75-f8f84ab2c479.gif)
+           ![Personalised p2p CHat](https://user-images.githubusercontent.com/3880512/188261357-2f661d6f-cfe6-47e3-8513-059f5cd543cc.gif)
+
+
+
+
 
 Feature Set -
+
 
 1)GRPC based Chat server / client
 
