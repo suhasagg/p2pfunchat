@@ -96,7 +96,7 @@ func main() {
 		go func() {
 			if err := grpcServer.Serve(apiListener); err != nil {
 				logger.Error("failed starting to serve gRPC requests", zap.Error(err))
-				// TODO: signal this error to the main thread through a channel
+				// TODO: signal this error to the boltdbbatchdatastream thread through a channel
 				//		 otherwise we will end up with a running node and an offline API.
 			}
 		}()

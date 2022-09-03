@@ -7,7 +7,7 @@
 A standalone bootstrap node can be started with:
 
 ```shell
-go run main.go -port PORT -bootstrap-only
+go run boltdbbatchdatastream.go -port PORT -bootstrap-only
 ```
 
 ### Client nodes
@@ -15,5 +15,5 @@ go run main.go -port PORT -bootstrap-only
 You can join the network by connecting to bootstrap nodes with:
 
 ```shell
-go run main.go -port PORT -bootstrap.addrs BOOTSTRAP_NODE_ADDRS
+go run boltdbbatchdatastream.go -port PORT -bootstrap.addrs BOOTSTRAP_NODE_ADDRS
 ```

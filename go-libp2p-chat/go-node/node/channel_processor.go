@@ -7,16 +7,22 @@ import (
 	block "github.com/go-libp2p-chat/go-node/blocklist"
 	"github.com/go-libp2p-chat/go-node/events"
 	"github.com/go-libp2p-chat/go-node/message"
+	"github.com/go-libp2p-chat/go-node/storage/boltdbstorage"
 	"github.com/libp2p/go-libp2p-core/peer"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/pkg/errors"
-	vec "github.com/sajari/word2vec"
 	ratelimit "github.com/sethvargo/go-limiter"
 	"github.com/sethvargo/go-limiter/memorystore"
+	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"
+	"io"
 	"log"
 	"math"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -25,7 +31,7 @@ import (
 const (
 	roomParticipantsTTLPermanent = math.MaxInt64
 	roomParticipantsTTL          = time.Second * 300
-	roomBlockTTL                 = time.Hour * 12
+	roomBlockTTL                 = time.Minute * 1
 	roomBanTTL                   = time.Hour * 168
 )
 
@@ -90,16 +96,36 @@ type Channel struct {
 	subscription *pubsub.Subscription
 	// Map is counter of moderation messages for user in a chat room
 	usermoderationCounter sync.Map
-	ratelimitstore        ratelimit.Store
-	lock                  sync.RWMutex
-	participants          map[peer.ID]*participantsEntry
+	counter               int
+	//moderationdata        map[peer.ID]*moderationData
+	moderationdata sync.Map
+	ratelimitstore ratelimit.Store
+	lock           sync.RWMutex
+	participants   map[peer.ID]*participantsEntry
+}
+
+func setupDB() (*boltdbstorage.Storage, error) {
+	logger, err := zap.NewDevelopment()
+	db, err := bolt.Open("4.db", 0600, nil)
+	if err != nil {
+		return nil, fmt.Errorf("could not open db, %v", err)
+	}
+	storage, err := boltdbstorage.New(db, []byte("topic"))
+	if err != nil {
+		return nil, fmt.Errorf("could not set up buckets, %v", err)
+	}
+	logger.Debug("BoltDB Setup Done")
+	return storage, nil
 }
 
 func newChannel(name string, topic *pubsub.Topic, subscription *pubsub.Subscription) *Channel {
+	var moderationcounter int
 	return &Channel{
-		name:         name,
-		topic:        topic,
+		name:  name,
+		topic: topic,
+		//moderationdata: make(map[peer.ID]*moderationData),
 		subscription: subscription,
+		counter:      moderationcounter,
 		participants: make(map[peer.ID]*participantsEntry),
 	}
 }
@@ -158,46 +184,26 @@ func (r *Channel) refreshParticipants(onRemove func(peer.ID)) {
 	}
 }
 
-func (r *Channel) unblockunbanParticipants(onRemoveModeration func(peer.ID)) {
+func (r *Channel) unblockunbanParticipants() {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	r.usermoderationCounter.Range(func(k, v interface{}) bool {
+	r.moderationdata.Range(func(k, v interface{}) bool {
 		if v.(moderationData).blocked {
 			if time.Now().Sub(v.(moderationData).blockedAt) <= roomBlockTTL {
 				return true
 			} else {
-				nickname, found := r.getNickname(k.(peer.ID))
-				if found {
-					r.participants[k.(peer.ID)] = &participantsEntry{
-						ID:       k.(peer.ID),
-						Nickname: nickname,
-						ttl:      roomParticipantsTTL,
-						addedAt:  time.Now(),
-					}
-				}
+				r.moderationdata.Store(k.(peer.ID), moderationData{blocked: false})
+				return true
 			}
-			//logger.Debug("Block Moderation removed")
-			onRemoveModeration(k.(peer.ID))
-			return true
 		}
 		if v.(moderationData).banned {
 			if time.Now().Sub(v.(moderationData).bannedAt) <= roomBanTTL {
 				return true
 			} else {
-				nickname, found := r.getNickname(k.(peer.ID))
-				if found {
-					r.participants[k.(peer.ID)] = &participantsEntry{
-						ID:       k.(peer.ID),
-						Nickname: nickname,
-						ttl:      roomParticipantsTTL,
-						addedAt:  time.Now(),
-					}
-				}
+				r.moderationdata.Store(k.(peer.ID), moderationData{banned: false})
+				return true
 			}
-			//logger.Debug("Ban Moderation removed")
-			onRemoveModeration(k.(peer.ID))
-			return true
 		}
 		return true
 	})
@@ -226,63 +232,57 @@ func (r *Channel) getNickname(peerID peer.ID) (string, bool) {
 
 // ChannelProcessor manages rooms through pubsub subscription and implements room operations.
 type ChannelProcessor struct {
-	logger          *zap.Logger
-	ps              *pubsub.PubSub
-	node            Node
-	kadDHT          *dht.IpfsDHT
-	bannedIPlist    *block.Blocklist
-	moderatorConfig *vec.Model
-	rooms           map[string]*Channel
-	eventPublisher  events.Publisher
+	logger         *zap.Logger
+	ps             *pubsub.PubSub
+	node           Node
+	kadDHT         *dht.IpfsDHT
+	bannedIPlist   *block.Blocklist
+	boltdatabase   *boltdbstorage.Storage
+	rooms          map[string]*Channel
+	eventPublisher events.Publisher
 
 	lock sync.RWMutex
 }
 
 // NewChannelProcessor creates a new room manager.
 func NewChannelProcessor(logger *zap.Logger, node Node, kadDHT *dht.IpfsDHT, ps *pubsub.PubSub) (*ChannelProcessor, events.Subscriber) {
-	if logger == nil {
-		logger = zap.NewNop()
-	}
+
+	logger, err := zap.NewDevelopment()
 	evtPub, evtSub := events.NewSubscription()
-	/*
-		p := filepath.Join("testdata", "blocklist.cidr")
-		f, err := os.Open(p)
-		if err != nil {
 
-		}
-	*/
+	p := filepath.Join("testdata", "blocklist.cidr")
+	f, err := os.Open(p)
+	if err != nil {
 
+	}
 	iplist := block.New()
-	/*
-		_, err1 := iplist.Reload(f)
-		if err1 != nil {
+	_, err1 := iplist.Reload(f)
+	if err1 != nil {
+		logger.Debug("Error opening database")
+	}
 
+	var db *boltdbstorage.Storage
+	go func() {
+		db, err = setupDB()
+		if err != nil {
+			logger.Debug("Error opening database")
 		}
-	*/
-	/*
+	}()
+	time.Sleep(time.Second * 2)
 
-		f, err2 := os.Open("/home/swordfish/Downloads/WordVector/model.bin")
-		if err2 != nil {
-
-		}
-		defer f.Close()
-		moderator, err := vec.FromReader(bufio.NewReader(f))
-	*/
-	moderator := vec.Model{}
 	mngr := &ChannelProcessor{
-
-		logger:          logger,
-		ps:              ps,
-		node:            node,
-		kadDHT:          kadDHT,
-		bannedIPlist:    iplist,
-		moderatorConfig: &moderator,
-		rooms:           make(map[string]*Channel),
-		eventPublisher:  evtPub,
+		logger:         logger,
+		ps:             ps,
+		node:           node,
+		kadDHT:         kadDHT,
+		bannedIPlist:   iplist,
+		boltdatabase:   db,
+		rooms:          make(map[string]*Channel),
+		eventPublisher: evtPub,
 	}
 	go mngr.advertise()
 	go mngr.refreshRoomsParticipants()
-
+	go mngr.unblockunbanRoomsParticipants()
 	return mngr, evtSub
 }
 
@@ -321,11 +321,12 @@ func (r *ChannelProcessor) JoinAndSubscribe(roomName string, nickname string) (b
 	}
 
 	room := newChannel(roomName, topic, subscription)
+
 	room.addParticipant(r.node.ID(), nickname, roomParticipantsTTLPermanent)
 
 	store, err := memorystore.New(&memorystore.Config{
 		// Number of tokens allowed per interval.
-		Tokens: 1,
+		Tokens: 60,
 
 		// Interval until tokens reset.
 		Interval: time.Minute,
@@ -478,10 +479,6 @@ func (r *ChannelProcessor) roomSubscriptionHandler(room *Channel) {
 			continue
 		}
 
-		if subMsg.ReceivedFrom == r.node.ID() {
-			continue
-		}
-
 		var rm RoomMessageIn
 		if err := json.Unmarshal(subMsg.Data, &rm); err != nil {
 			r.logger.Warn("ignoring room message", zap.Error(err))
@@ -497,12 +494,36 @@ func (r *ChannelProcessor) roomSubscriptionHandler(room *Channel) {
 					"ignoring message",
 					zap.Error(errors.Wrap(err, "unmarshalling payload")),
 				)
+
 				continue
+
 			}
+			/*
+				if room.moderationdata[chatMessage.SenderID] != nil {
+
+					if room.moderationdata[chatMessage.SenderID].blocked == true {
+						continue
+					}
+
+					if room.moderationdata[chatMessage.SenderID].banned == true {
+						continue
+					}
+				}
+			*/
+			moderationvalue, found := room.moderationdata.Load(chatMessage.SenderID)
+			if found {
+				if moderationvalue.(moderationData).blocked == true {
+					continue
+				}
+				if moderationvalue.(moderationData).banned == true {
+					continue
+				}
+			}
+
 			/*
 				re := regexp.MustCompile(`(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}`)
 				fmt.Printf("Pattern: %v\n", re.String())
-				submatchall := re.FindAllString(chatMessage.SenderID.String(), -1)
+				submatchall := re.FindAllString(, -1)
 				if r.bannedIPlist.Blocked(net.ParseIP(submatchall[0])) {
 
 					msg := message.Message{
@@ -522,6 +543,15 @@ func (r *ChannelProcessor) roomSubscriptionHandler(room *Channel) {
 					continue
 				}
 			*/
+			topic := boltdbstorage.Topic{ChatMessage: chatMessage.Value, SenderId: chatMessage.SenderID.String()}
+			if r.boltdatabase != nil {
+				err = r.boltdatabase.WriteTopic(room.name, &topic)
+				r.logger.Debug("Data written to bolt db")
+				if err != nil {
+					r.logger.Debug("Error Writing chat history", zap.Error(err))
+				}
+			}
+
 			ctx := context.Background()
 			_, _, reset, ok, err := room.ratelimitstore.Take(ctx, chatMessage.SenderID.String())
 			if err != nil {
@@ -550,51 +580,85 @@ func (r *ChannelProcessor) roomSubscriptionHandler(room *Channel) {
 				continue
 			}
 
-			expr := vec.Expr{}
-			for _, word := range strings.Split(chatMessage.Value, " ") {
-				expr.Add(1.0, word)
+			resp, err := http.Get("http://localhost:82/IAB/" + chatMessage.Value + "," + "abusive")
+			if err != nil {
+				log.Fatalln(err)
 			}
-			expr1 := vec.Expr{}
-			expr1.Add(1.0, "abusive")
-			similarityscore, err := r.moderatorConfig.Cos(expr, expr1)
+			score, err := io.ReadAll(resp.Body)
+
+			similarityscore, err := strconv.ParseFloat(strings.TrimRight(string(score), "!\n"), 32)
+
 			//Moderation module
-			expr2 := vec.Expr{}
-			expr3 := vec.Expr{}
-			for _, word := range strings.Split(chatMessage.Value, " ") {
-				expr2.Add(1.0, word)
+			resp, err = http.Get("http://localhost:82/IAB/" + chatMessage.Value + "," + room.name)
+			if err != nil {
+				log.Fatalln(err)
 			}
-			expr3.Add(1.0, room.name)
-			topicrelevancescore, err := r.moderatorConfig.Cos(expr2, expr3)
+
+			score1, err := io.ReadAll(resp.Body)
+			topicrelevancescore, err := strconv.ParseFloat(strings.TrimRight(string(score1), "!\n"), 32)
 
 			if err != nil {
 				r.logger.Error("Error in calculating similarity", zap.Error(err))
 			}
-			r.logger.Debug("Abusive content score", zap.Float32("Abuse Score", topicrelevancescore))
-			r.logger.Debug("Topic relevance score", zap.Float32("Abuse Score", topicrelevancescore))
+			r.logger.Debug("Abusive content score", zap.Float64("Abuse Score", similarityscore))
+			r.logger.Debug("Topic relevance score", zap.Float64("Quality Score", topicrelevancescore))
 			var moderation bool
-			if similarityscore > 0.5 {
+
+			if topicrelevancescore > 0.4 {
+
+				r.logger.Debug("Quality content detected")
+				msg := message.Message{
+					SenderID:  "Moderator",
+					Timestamp: time.Now(),
+					Value:     chatMessage.SenderID.Pretty() + ":" + "Kool content",
+				}
+
+				err := r.eventPublisher.Publish(&events.NewMessage{
+					Message:  msg,
+					RoomName: room.name,
+				})
+				if err != nil {
+					r.logger.Error("failed publishing room manager event", zap.Error(err))
+					continue
+				}
+
+			} else {
+
+			}
+
+			if similarityscore > 0.3 {
 				moderation = true
 				r.logger.Debug("Abusive content detected")
+			} else {
+
+				if subMsg.ReceivedFrom == r.node.ID() {
+					continue
+				}
+
 			}
 
 			if moderation {
-				room.usermoderationCounter = sync.Map{}
+
 				blockdata, found := room.usermoderationCounter.Load(chatMessage.SenderID)
-				var moderationcounter int
+
 				wg := sync.WaitGroup{}
 				wg.Add(1)
 				go func(found bool) {
+					defer wg.Done()
 					if found {
-						defer wg.Done()
-						room.usermoderationCounter.Store(chatMessage.SenderID, moderationcounter+1)
-						moderationcounter = blockdata.(moderationData).counter + 1
+						room.usermoderationCounter.Store(chatMessage.SenderID, room.counter+1)
+						room.counter = blockdata.(int) + 1
 					} else {
 						room.usermoderationCounter.Store(chatMessage.SenderID, 1)
-						moderationcounter = 1
+						room.counter = 1
 					}
 				}(found)
+
 				wg.Wait()
-				if moderationcounter < 5 {
+
+				r.logger.Debug("Moderation Counter", zap.Int("Moderation", room.counter))
+
+				if room.counter < 5 {
 
 					msg := message.Message{
 						SenderID:  "Moderator",
@@ -611,8 +675,9 @@ func (r *ChannelProcessor) roomSubscriptionHandler(room *Channel) {
 						continue
 					}
 
-				} else if moderationcounter > 5 && moderationcounter < 10 {
+				} else if room.counter >= 5 && room.counter < 10 {
 
+					room.moderationdata.Store(chatMessage.SenderID, moderationData{blockedAt: time.Now(), blocked: true})
 					msg := message.Message{
 						SenderID:  "Moderator",
 						Timestamp: time.Now(),
@@ -630,6 +695,8 @@ func (r *ChannelProcessor) roomSubscriptionHandler(room *Channel) {
 					}
 
 				} else {
+
+					room.moderationdata.Store(chatMessage.SenderID, moderationData{bannedAt: time.Now(), banned: true})
 
 					msg := message.Message{
 						SenderID:  "Moderator",
@@ -816,21 +883,9 @@ func (r *ChannelProcessor) unblockunbanRoomsParticipants() {
 			defer r.lock.RUnlock()
 
 			for _, room := range r.rooms {
-				room.unblockunbanParticipants(func(peerID peer.ID) {
-					// consider that if we haven't hear of this peer for a while, it disconnected from the room
-					/*
-							err := r.eventPublisher.Publish(&events.ModerationRemoved{
-								PeerID:   peerID,
-								RoomName: room.name,
-							})
-							if err != nil {
-								r.logger.Error("failed publishing room manager event", zap.Error(err))
-						    }
-
-					*/
-
-				})
+				room.unblockunbanParticipants()
 			}
 		}()
+
 	}
 }

@@ -21,6 +21,9 @@ This is how the network looks  like after a node joins the Kademlia network. We'
 This is how the network looks like after the node requests a chatroom. All the nodes in the chatroom are now connected directly and separately from the Kademlia network.
 
 
+Start content analytics python module based on sentence transformers in start to create ML analytics tracker used by p2p chat.
+
+
 Feature Set - 
 
 1)GRPC based Chat server / client
@@ -29,7 +32,7 @@ Feature Set -
 
 3)Content Moderation
 
-Negative Categories 
+Negative Categories - These messages are blocked and not reachable to other users.
 
 a) Spam
 
@@ -40,7 +43,7 @@ c) Adult content
 
 Positive Categories 
 
-a)Highly relevant – quality content
+a)Highly relevant – quality content for assigning badges, points to user to earn rewards
 
 b)Less relevant
 
@@ -56,8 +59,11 @@ c)Fun messages
 
 8)User block facility 
 
-9)User Message history and P2P chat session storage and recovery/resumption in peers
+9)User Message history and P2P chat session storage and recovery/resumption in peers. 
+  Batch mode message history sync to p2p chat database tracker for analytics and storage.
+  Hbase based message database tracker server - https://github.com/suhasagg/hbase-messageserver-as-p2pchat-database-tracker 
 
 10)Storing User semantics for P2P CHAT sessions to be plugged in analytics engine
+   User chat semantics are available in bolt db so that other apps can utilise it for personalisation.
 
 

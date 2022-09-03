@@ -7,34 +7,43 @@ import (
 // Spec contains fields for serialising topic information
 type Topic struct {
 	ChatMessage        string
+	SenderId           string
+	UUId               string
 	ModeratorMessage   string
 	AdvertisingMessage string
 	ReactionMessage    string
 	UserList           []string
 	BlockuserList      []string
 	BanuserList        []string
+	Persona            string
 }
 
 type jsontopicSpec struct {
 	ChatMessage        string
+	UUId               string
+	SenderId           string
 	ModeratorMessage   string
 	AdvertisingMessage string
 	ReactionMessage    string
 	UserList           []string
 	BlockuserList      []string
 	BanuserList        []string
+	Persona            string
 }
 
 // MarshalJSON converts the Spec to a JSON string.
 func (t *Topic) MarshalJSON() ([]byte, error) {
 	j := jsontopicSpec{
 		ChatMessage:        t.ChatMessage,
+		UUId:               t.UUId,
+		SenderId:           t.SenderId,
 		ModeratorMessage:   t.ModeratorMessage,
 		AdvertisingMessage: t.AdvertisingMessage,
 		ReactionMessage:    t.ReactionMessage,
 		UserList:           t.UserList,
 		BlockuserList:      t.BlockuserList,
 		BanuserList:        t.BanuserList,
+		Persona:            t.Persona,
 	}
 	return json.Marshal(j)
 }
@@ -47,12 +56,15 @@ func (t *Topic) UnmarshalJSON(b []byte) error {
 		return err
 	}
 	t.ChatMessage = j.ChatMessage
+	t.UUId = j.UUId
+	t.SenderId = j.SenderId
 	t.ModeratorMessage = j.ModeratorMessage
 	t.AdvertisingMessage = j.AdvertisingMessage
 	t.ReactionMessage = j.ReactionMessage
 	t.UserList = j.UserList
 	t.BlockuserList = j.BlockuserList
 	t.BanuserList = j.BanuserList
+	t.Persona = j.Persona
 	return nil
 }
 
