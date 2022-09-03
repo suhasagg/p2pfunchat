@@ -21,6 +21,11 @@ This is how the network looks  like after a node joins the Kademlia network. We'
 This is how the network looks like after the node requests a chatroom. All the nodes in the chatroom are now connected directly and separately from the Kademlia network.
 
 
+
+
+
+![Personalised p2p CHat](https://user-images.githubusercontent.com/3880512/188261250-288229b8-141d-4df3-a907-2a77ceb05715.gif)
+
 Feature Set - 
 
 1)GRPC based Chat server / client
