@@ -24,6 +24,12 @@ This is how the network looks like after the node requests a chatroom. All the n
 Start content analytics python module based on sentence transformers in start to create ML analytics tracker used by p2p chat.
 
 
+
+
+
+
+![Personalised p2p CHat](https://user-images.githubusercontent.com/3880512/188261200-63bf7885-0e97-4502-a82d-a67fa4ad30cc.gif)
+
 Feature Set - 
 
 1)GRPC based Chat server / client
@@ -62,8 +68,13 @@ c)Fun messages
 9)User Message history and P2P chat session storage and recovery/resumption in peers. 
   Batch mode message history sync to p2p chat database tracker for analytics and storage.
   Hbase based message database tracker server - https://github.com/suhasagg/hbase-messageserver-as-p2pchat-database-tracker 
-
+  
+  
 10)Storing User semantics for P2P CHAT sessions to be plugged in analytics engine
    User chat semantics are available in bolt db so that other apps can utilise it for personalisation.
+   
+   
+   
+  
 
 
