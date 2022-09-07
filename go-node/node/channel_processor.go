@@ -588,7 +588,8 @@ func (r *ChannelProcessor) roomSubscriptionHandler(room *Channel) {
 				}
 				continue
 			}
-
+                        //ML engine tracker calls to determine content is abusive, quality content
+			 
 			resp, err := http.Get("http://localhost:82/IAB/" + chatMessage.Value + "," + "abusive")
 			if err != nil {
 				log.Fatalln(err)
@@ -645,7 +646,7 @@ func (r *ChannelProcessor) roomSubscriptionHandler(room *Channel) {
 				}
 
 			}
-
+                        //User content moderation Algorithm, if user content has reached block threshold as determined by moderation counter after analysis via ML engine, then user must be blocked
 			if moderation {
 
 				blockdata, found := room.usermoderationCounter.Load(chatMessage.SenderID)
@@ -880,7 +881,7 @@ func (r *ChannelProcessor) refreshRoomsParticipants() {
 		}()
 	}
 }
-
+//After a period, user unblock unban participant code runs periodically
 func (r *ChannelProcessor) unblockunbanRoomsParticipants() {
 	tick := time.Tick(time.Second)
 
