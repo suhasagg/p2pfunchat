@@ -315,15 +315,16 @@ func (r *ChannelProcessor) JoinAndSubscribe(roomName string, nickname string) (b
 			subscription.Cancel()
 		}
 	}
-
+    
 	logger.Debug("joining room topic")
 	topicName := r.TopicName(roomName)
+// Join joins the chatroon topic and returns a Topic handle
 	topic, err := r.ps.Join(topicName)
 	if err != nil {
 		logger.Debug("failed joining room topic")
 		return false, err
 	}
-
+ //a new Subscription for the topic to receive all chat messages for the topic 
 	logger.Debug("subscribing to room topic")
 	subscription, err := topic.Subscribe()
 	if err != nil {
