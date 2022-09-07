@@ -329,7 +329,8 @@ func (r *ChannelProcessor) JoinAndSubscribe(roomName string, nickname string) (b
 	room := newChannel(roomName, topic, subscription)
 
 	room.addParticipant(r.node.ID(), nickname, roomParticipantsTTLPermanent)
-
+ 
+	//Cooling period feature implementation via token bucket Algorithm
 	store, err := memorystore.New(&memorystore.Config{
 		// Number of tokens allowed per interval.
 		Tokens: 60,
