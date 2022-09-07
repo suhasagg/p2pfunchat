@@ -45,6 +45,7 @@ type participantsEntry struct {
 	addedAt time.Time
 }
 
+//user moderation data stored with peer id, it contains timestamps when user was blocked/banned
 type moderationData struct {
 	nickname  string
 	counter   int
