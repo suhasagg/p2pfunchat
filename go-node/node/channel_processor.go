@@ -772,6 +772,7 @@ func (r *ChannelProcessor) roomSubscriptionHandler(room *Channel) {
 			if err != nil {
 				r.logger.Error("failed publishing room manager event", zap.Error(err))
 			}
+		//Decodes message received - Advertise message 	
 		case RoomMessageTypeAdvertise:
 			var nickname string
 			if err := json.Unmarshal(rm.Payload, &nickname); err != nil {
