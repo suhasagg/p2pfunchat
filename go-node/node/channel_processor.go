@@ -332,10 +332,10 @@ func (r *ChannelProcessor) JoinAndSubscribe(roomName string, nickname string) (b
  
 	//Cooling period feature implementation via token bucket Algorithm
 	store, err := memorystore.New(&memorystore.Config{
-		// Number of tokens allowed per interval.
+		// Number of tokens/messages allowed per interval.
 		Tokens: 60,
 
-		// Interval until tokens reset.
+		// Interval until tokens reset, user can post messages again after tokens are available again after message quota expiry
 		Interval: time.Minute,
 	})
 	room.ratelimitstore = store
