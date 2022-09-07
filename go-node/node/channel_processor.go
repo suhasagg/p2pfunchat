@@ -491,7 +491,7 @@ func (r *ChannelProcessor) roomTopicEventHandler(room *Channel) {
 }
 
 func (r *ChannelProcessor) roomSubscriptionHandler(room *Channel) {
-	for {
+	for {   //Receives the chatroom messages and advertising messages (to maintain chat peers in chat room)
 		subMsg, err := room.subscription.Next(context.Background())
 		if err != nil {
 			r.logger.Error("failed receiving room message", zap.Error(err))
@@ -504,7 +504,7 @@ func (r *ChannelProcessor) roomSubscriptionHandler(room *Channel) {
 		}
 
 		//var moderation bool
-
+                //Decodes message received - chat message
 		switch rm.Type {
 		case RoomMessageTypeChatMessage:
 			var chatMessage message.Message
