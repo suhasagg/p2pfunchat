@@ -551,6 +551,7 @@ func (r *ChannelProcessor) roomSubscriptionHandler(room *Channel) {
 					continue
 				}
 			*/
+			//Message history generation - messages are getting serialised to bolt db in chat room (chat topic) bucket with specification implemented
 			topic := boltdbstorage.Topic{ChatMessage: chatMessage.Value, SenderId: chatMessage.SenderID.String()}
 			if r.boltdatabase != nil {
 				err = r.boltdatabase.WriteTopic(room.name, &topic)
