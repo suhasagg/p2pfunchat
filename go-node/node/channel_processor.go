@@ -376,6 +376,9 @@ func (r *ChannelProcessor) TopicName(roomName string) string {
 // SendChatMessage sends a chat message to a given room.
 // Fails if it has not yet joined the given room.
 func (r *ChannelProcessor) SendChatMessage(ctx context.Context, roomName string, msg message.Message) error {
+        //rooms map[string]*Channel
+	//Chat Node contains all the rooms it is member of
+	//If room is found in map above, chat node can publish message to room, which other nodes can view
 	room, found := r.getRoom(roomName)
 	if !found {
 		return errors.New(fmt.Sprintf("must join the room before sending messages"))
@@ -385,7 +388,8 @@ func (r *ChannelProcessor) SendChatMessage(ctx context.Context, roomName string,
 		Type:    RoomMessageTypeChatMessage,
 		Payload: msg,
 	}
-
+        // publishes a chatmessage
+	// to the PubSub topic until the pubsub context closes
 	if err := r.publishRoomMessage(ctx, room, rm); err != nil {
 		return err
 	}
