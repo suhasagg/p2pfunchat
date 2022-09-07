@@ -462,7 +462,7 @@ func (r *ChannelProcessor) roomTopicEventHandler(room *Channel) {
 		}
 
 		var evt events.Event
-
+//if a peer join event occurs corresponding to pub sub topic i.e chatroom participant is added
 		switch peerEvt.Type {
 		case pubsub.PeerJoin:
 			evt = &events.PeerJoined{
@@ -470,7 +470,7 @@ func (r *ChannelProcessor) roomTopicEventHandler(room *Channel) {
 				RoomName: room.name,
 			}
 			room.addParticipant(peerEvt.Peer, "", roomParticipantsTTL)
-
+//if a peer leave event occurs corresponding to pub sub topic i.e chatroom participant is removed
 		case pubsub.PeerLeave:
 			evt = &events.PeerLeft{
 				PeerID:   peerEvt.Peer,
