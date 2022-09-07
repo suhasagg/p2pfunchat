@@ -567,7 +567,7 @@ func (r *ChannelProcessor) roomSubscriptionHandler(room *Channel) {
 				r.logger.Error("failed publishing room manager event", zap.Error(err))
 			}
 			timeFromTS := time.Unix(0, int64(reset))
-
+                        //if message tokens are not available, user can post messages when cooling period is over as specified by timeFromTS.String()
 			if !ok {
 				msg := message.Message{
 					SenderID:  "Moderator",
