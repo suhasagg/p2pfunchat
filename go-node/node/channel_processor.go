@@ -518,6 +518,7 @@ func (r *ChannelProcessor) roomSubscriptionHandler(room *Channel) {
 				}
 			*/
 			moderationvalue, found := room.moderationdata.Load(chatMessage.SenderID)
+			//After being blocked/banned, user messages are not transmitted to peers
 			if found {
 				if moderationvalue.(moderationData).blocked == true {
 					continue
