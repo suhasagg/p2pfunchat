@@ -106,6 +106,8 @@ func (s *Server) GetRoomParticipants(
 	return &apigen.GetRoomParticipantsResponse{Participants: participantsRes}, nil
 }
 
+//User of Server streaming API to send events throughout the lifecycle of p2p chatroom
+//Client only needs to send one subscription request and will receive many event responses from server 
 func (s *Server) SubscribeToEvents(
 	_ *apigen.SubscribeToEventsRequest,
 	stream apigen.Api_SubscribeToEventsServer,
