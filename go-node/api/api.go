@@ -61,7 +61,12 @@ func (s *Server) GetNickname(
 	request *apigen.GetNicknameRequest,
 ) (*apigen.GetNicknameResponse, error) {
 	s.logger.Info("handling GetNickname")
-
+// Decode accepts an encoded peer ID and returns the decoded ID if the input is
+// valid.
+//
+// The encoded peer ID can either be a CID of a key or a raw multihash (identity
+// or sha256-256).
+	
 	peerID, err := peer.Decode(request.PeerId)
 	if err != nil {
 		s.logger.Error("failed parsing peer id", zap.Error(err))
