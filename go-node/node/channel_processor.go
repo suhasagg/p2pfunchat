@@ -31,7 +31,9 @@ import (
 const (
 	roomParticipantsTTLPermanent = math.MaxInt64
 	roomParticipantsTTL          = time.Second * 300
+//If user block ttl has expired, user will be unblocked
 	roomBlockTTL                 = time.Minute * 1
+//if user ban ttl has expired, user will be unbanned
 	roomBanTTL                   = time.Hour * 168
 )
 
@@ -99,6 +101,7 @@ type Channel struct {
 	counter               int
 	//moderationdata        map[peer.ID]*moderationData
 	moderationdata sync.Map
+	//user to limit cooling period feature of chat room via token bucket algorithm 
 	ratelimitstore ratelimit.Store
 	lock           sync.RWMutex
 	participants   map[peer.ID]*participantsEntry
