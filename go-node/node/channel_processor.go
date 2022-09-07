@@ -286,6 +286,7 @@ func NewChannelProcessor(logger *zap.Logger, node Node, kadDHT *dht.IpfsDHT, ps 
 	}
 	go mngr.advertise()
 	go mngr.refreshRoomsParticipants()
+	//Longer running go routines active throughout the lifecycle of application, heartbeat/healing go routines feature can be added to optimise these go routines
 	go mngr.unblockunbanRoomsParticipants()
 	return mngr, evtSub
 }
