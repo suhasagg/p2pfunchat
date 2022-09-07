@@ -187,6 +187,7 @@ func (r *Channel) refreshParticipants(onRemove func(peer.ID)) {
 	}
 }
 
+//After a time period, this method is called periodically to unblock/unban user  
 func (r *Channel) unblockunbanParticipants() {
 	r.lock.Lock()
 	defer r.lock.Unlock()
