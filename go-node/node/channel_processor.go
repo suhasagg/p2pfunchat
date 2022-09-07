@@ -429,6 +429,7 @@ func (r *ChannelProcessor) GetRoomParticipants(roomName string) ([]participantsE
 	}
 
 	// always append the node to the participants list
+	//[]participantsEntry, iterate over this slice and returns all the peers participating in chat
 	return room.getParticipants(), nil
 }
 
