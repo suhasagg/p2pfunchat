@@ -65,5 +65,3 @@ c)Fun messages
 
 10)Storing User semantics for P2P CHAT sessions to be plugged in analytics engine
 
-Reference -
-https://github.com/FelipeRosa/go-libp2p-chat
